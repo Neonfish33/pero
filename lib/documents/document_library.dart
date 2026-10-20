@@ -196,6 +196,49 @@ class DocumentLibrary extends ChangeNotifier {
     return imported;
   }
 
+  PeroDocument? documentById(String id) {
+    for (final document in _documents) {
+      if (document.id == id) {
+        return document;
+      }
+    }
+    return null;
+  }
+
+  void insertDocument(PeroDocument document) {
+    if (_documents.any((existing) => existing.id == document.id)) {
+      return;
+    }
+    _repository.upsert(document);
+    _documents.add(document);
+    _notify();
+  }
+
+  void updateFromRemote(
+    String id, {
+    required String markdown,
+    required DateTime updatedAt,
+  }) {
+    final index = _documents.indexWhere((document) => document.id == id);
+    if (index < 0) {
+      return;
+    }
+    final existing = _documents[index];
+    final normalized = normalizeNewlines(markdown);
+    final updated = existing.copyWith(
+      markdown: normalized,
+      title: deriveTitle(normalized, fallback: existing.title),
+      updatedAt: updatedAt,
+      revision: existing.revision + 1,
+    );
+    _documents[index] = updated;
+    if (_current?.id == id) {
+      _current = updated;
+    }
+    _repository.upsert(updated);
+    _notify();
+  }
+
   void setQuery(String value) {
     if (_query == value) {
       return;

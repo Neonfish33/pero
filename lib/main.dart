@@ -11,6 +11,8 @@ import 'documents/document_library.dart';
 import 'documents/document_repository.dart';
 import 'settings/settings.dart';
 import 'storage/database.dart';
+import 'sync/cloud_settings.dart';
+import 'sync/cloud_sync.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,12 +25,20 @@ Future<void> main(List<String> args) async {
     final library = DocumentLibrary(repository);
     library.load();
     await _importStartupFile(library, args);
+    final cloudSettings = await CloudSettings.load(preferences);
+    final cloudSync = CloudSync(
+      library: library,
+      repository: repository,
+      settings: cloudSettings,
+    );
 
     runApp(
       MultiProvider(
         providers: [
           ChangeNotifierProvider<SettingsController>.value(value: settings),
           ChangeNotifierProvider<DocumentLibrary>.value(value: library),
+          ChangeNotifierProvider<CloudSettings>.value(value: cloudSettings),
+          Provider<CloudSync>.value(value: cloudSync),
         ],
         child: const PeroApp(),
       ),

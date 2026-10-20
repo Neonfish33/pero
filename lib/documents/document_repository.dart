@@ -2,6 +2,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import '../documents/document.dart';
 import '../storage/database.dart';
+import '../sync/sync_state.dart';
 
 class DocumentRepository {
   DocumentRepository(this._database);
@@ -60,6 +61,59 @@ class DocumentRepository {
 
   void delete(String id) {
     _database.db.execute('DELETE FROM documents WHERE id = ?', [id]);
+  }
+
+  List<SyncState> syncStates() {
+    final rows = _database.db.select('''
+      SELECT document_id, remote_path, remote_modified, synced_updated_at, synced_at
+      FROM sync_state
+    ''');
+    return rows
+        .map(
+          (row) => SyncState(
+            documentId: row['document_id'] as String,
+            remotePath: row['remote_path'] as String,
+            remoteModified: DateTime.fromMillisecondsSinceEpoch(
+              row['remote_modified'] as int,
+            ),
+            syncedUpdatedAt: DateTime.fromMillisecondsSinceEpoch(
+              row['synced_updated_at'] as int,
+            ),
+            syncedAt: DateTime.fromMillisecondsSinceEpoch(
+              row['synced_at'] as int,
+            ),
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  void upsertSyncState(SyncState state) {
+    _database.db.execute(
+      '''
+      INSERT INTO sync_state (
+        document_id, remote_path, remote_modified, synced_updated_at, synced_at
+      ) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(document_id) DO UPDATE SET
+        remote_path = excluded.remote_path,
+        remote_modified = excluded.remote_modified,
+        synced_updated_at = excluded.synced_updated_at,
+        synced_at = excluded.synced_at
+      ''',
+      [
+        state.documentId,
+        state.remotePath,
+        state.remoteModified.millisecondsSinceEpoch,
+        state.syncedUpdatedAt.millisecondsSinceEpoch,
+        state.syncedAt.millisecondsSinceEpoch,
+      ],
+    );
+  }
+
+  void deleteSyncState(String documentId) {
+    _database.db.execute(
+      'DELETE FROM sync_state WHERE document_id = ?',
+      [documentId],
+    );
   }
 
   PeroDocument _fromRow(sqlite.Row row) {

@@ -18,6 +18,7 @@ import '../preview/markdown_preview.dart';
 import '../settings/settings.dart';
 import '../storage/file_service.dart';
 import '../storage/legacy_backup.dart';
+import '../sync/cloud_sync_dialog.dart';
 
 class EditorScreen extends StatefulWidget {
   const EditorScreen({super.key});
@@ -166,7 +167,10 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _syncDocument() {
     final document = _library.current;
-    if (document == null || _loadedId == document.id) {
+    if (document == null) {
+      return;
+    }
+    if (_loadedId == document.id && _lastText == document.markdown) {
       return;
     }
     _loadedId = document.id;
@@ -478,6 +482,13 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
+  void _openCloud() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => const CloudSyncDialog(),
+    );
+  }
+
   Future<void> _importBackup() async {
     try {
       final opened = await _fileService.openBackup();
@@ -720,6 +731,8 @@ class _EditorScreenState extends State<EditorScreen> {
               switch (value) {
                 case 'guide':
                   _library.openMarkdownGuide();
+                case 'cloud':
+                  _openCloud();
                 case 'import':
                   _importMarkdown();
                 case 'import_backup':
@@ -738,6 +751,11 @@ class _EditorScreenState extends State<EditorScreen> {
               PopupMenuItem<String>(
                 value: 'guide',
                 child: Text('Гайд по Markdown'),
+              ),
+              PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'cloud',
+                child: Text('Облако (WebDAV)…'),
               ),
               PopupMenuDivider(),
               PopupMenuItem<String>(

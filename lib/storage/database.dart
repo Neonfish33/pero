@@ -44,6 +44,20 @@ class PeroDatabase {
       ''');
       db.execute('PRAGMA user_version = 1');
     }
+
+    if (version < 2) {
+      db.execute('''
+        CREATE TABLE IF NOT EXISTS sync_state (
+          document_id TEXT NOT NULL PRIMARY KEY,
+          remote_path TEXT NOT NULL,
+          remote_modified INTEGER NOT NULL,
+          synced_updated_at INTEGER NOT NULL,
+          synced_at INTEGER NOT NULL,
+          FOREIGN KEY (document_id) REFERENCES documents (id) ON DELETE CASCADE
+        )
+      ''');
+      db.execute('PRAGMA user_version = 2');
+    }
   }
 
   void close() {
