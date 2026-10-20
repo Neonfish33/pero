@@ -6,6 +6,8 @@ A quiet offline Markdown editor in the spirit of iA Writer. One Flutter codebase
 
 The goal is not to clone iA Writer literally, but to carry over its philosophy: minimal interface, focus mode, typewriter mode, Markdown highlighting right in the text, instant response, and full operation without the internet. The starting point was the `pero.html` prototype.
 
+Roadmap: [ROADMAP.en.md](ROADMAP.en.md).
+
 ## Roadmap status
 
 - [x] Stage 1. Foundation: project, fonts, themes, settings, document model.
@@ -212,6 +214,16 @@ The old version stores documents in the browser's `localStorage` under the `pero
 
 The import understands the old `{docs: [{id, text, t}]}` format and the generic `{documents: [...]}` format. IDs and dates are preserved, and repeated imports do not create duplicates. Unknown settings are ignored, and the font size is clamped to 13–30.
 
+## Performance
+
+A built-in benchmark measures highlighting, layout, and paint for 10k, 100k, and 500k character documents:
+
+```powershell
+flutter test benchmark/editor_benchmark_test.dart -r expanded
+```
+
+The benchmark is not part of the regular `flutter test` run. Measurements in the headless test (not a release build) on the development machine: 10k — ~25 ms, 100k — ~1 s, 500k — tens of seconds (30–50 s) per frame. The main cost is laying out a single `TextSpan` for the whole document, not highlighting. The next step is therefore paragraph-level virtualization (stage 1.5), not a custom text engine.
+
 ## Tests and quality
 
 - `dart analyze` — no issues.
@@ -251,6 +263,8 @@ lib/
 
 tool/prepare_windows_links.ps1 — junctions for building without administrator rights
 tool/build_windows_release.ps1 — full Windows release build cycle and dist update
+benchmark/editor_benchmark_test.dart — highlight, layout, and paint measurements
+ROADMAP.en.md                 — development plan up to 3.0
 windows/runner/               — window (title "Перо", starts maximized), icon, and metadata
 ```
 
