@@ -26,7 +26,7 @@ The goal is not to clone iA Writer literally, but to carry over its philosophy: 
 - Themes: light, dark, auto (follows the system).
 - Column width: narrow (680), normal (860, default), wide (1040).
 - Word, character, and reading time counters; for selections, separately.
-- Shortcuts: `Ctrl/⌘ + B`, `Ctrl/⌘ + I`, `Ctrl/⌘ + E`, `Ctrl/⌘ + N`, `Ctrl/⌘ + F`.
+- Shortcuts in Windows: `Ctrl + B`, `Ctrl + I`, `Ctrl + E`, `Ctrl + N`, `Ctrl + F`. A future macOS build will use `⌘` instead of `Ctrl`.
 
 ### Documents
 
