@@ -76,10 +76,18 @@ flutter build windows --debug
 
 ### Релизная сборка (release)
 
-`flutter build windows --release` через junction всё равно падает: MSBuild получает реальный длинный путь с кириллицей и не может прочитать `app.dill`. Release нужно собирать в отдельной ASCII-папке:
+`flutter build windows --release` через junction всё равно падает: MSBuild получает реальный длинный путь с кириллицей и не может прочитать `app.dill`. Release нужно собирать в отдельной ASCII-папке. Весь цикл автоматизирован:
 
 ```powershell
-robocopy "C:\Users\yagan\Downloads\аналог ia writer\pero" "C:\pero_build" /E /XD build .dart_tool .git ephemeral
+powershell -ExecutionPolicy Bypass -File tool/build_windows_release.ps1
+```
+
+Скрипт синхронизирует исходники в `C:\pero_build`, делает `flutter clean`, `pub get`, готовит junction-ссылки плагинов, собирает release и обновляет `dist/pero-windows-x64/` с архивом `dist/pero-windows-x64.zip`.
+
+Вручную:
+
+```powershell
+robocopy "C:\Users\yagan\Downloads\аналог ia writer\pero" "C:\pero_build" /E /XD build .dart_tool .git ephemeral dist
 cd C:\pero_build
 flutter pub get
 powershell -ExecutionPolicy Bypass -File tool/prepare_windows_links.ps1
@@ -87,6 +95,16 @@ flutter build windows --release
 ```
 
 Готовый запускаемый комплект лежит в `dist/pero-windows-x64/` (`pero.exe` + DLL + `data/`). Его нужно запускать целиком из папки; отдельный `pero.exe` без соседних файлов не заработает. Там же лежит архив `dist/pero-windows-x64.zip`.
+
+### Значок, метаданные и окно
+
+- Своя иконка приложения: `windows/runner/resources/app_icon.ico` (размеры 16–256, серифная «П» на бумажном фоне). Она же показывается в панели задач и в Проводнике.
+- Метаданные exe в `windows/runner/Runner.rc`: «Перо — редактор Markdown», версия берётся из `pubspec.yaml`. Поля `CompanyName`/`ProductName` намеренно оставлены `com.pero`/`pero`: от них зависит путь данных `%APPDATA%\com.pero\pero`, поэтому переименовывать их нельзя.
+- Минимальный размер окна — 560×420 логических пикселей с учётом DPI; окно по-прежнему открывается развёрнутым, тёмная тема заголовка следует за системой.
+
+### Открытие `.md` из Проводника
+
+Приложение принимает путь к файлу в аргументах командной строки. Достаточно выбрать `pero.exe` через «Открыть с помощью» для `.md`, `.markdown` или `.txt` — файл будет импортирован в библиотеку и открыт. Постоянную ассоциацию файлов можно включить вручную или через будущий установщик.
 
 ## Сборка под Android (APK)
 
@@ -105,6 +123,8 @@ build/app/outputs/flutter-apk/app-debug.apk
 ```
 
 Копии лежат в `dist/pero-release.apk` и `dist/pero-debug.apk`. Release подписан debug-ключом из шаблона — для установки на устройство и теста годится, для публикации в Play нужен свой ключ.
+
+Текущие APK в `dist/` собраны из среза до версии 1.0.0 и не включают последние изменения — перед продолжением работы над мобильными платформами их нужно пересобрать.
 
 В `android/app/build.gradle.kts` для release отключены `isMinifyEnabled` и `isShrinkResources`. Иначе R8 переименовывает `kotlin.coroutines.Continuation` и ломает suspend-методы Pigeon-плагинов: при запуске падает `PlatformException ... NoSuchMethodError ... SharedPreferencesApiRegistrar.getAll`. Для потери минификации на время теста это нормально; при выпуске понадобятся keep-правила ProGuard.
 
@@ -196,7 +216,8 @@ lib/
 └── settings/                 — настройки и их хранение
 
 tool/prepare_windows_links.ps1 — junction-и для сборки без прав администратора
-windows/runner/               — окно (заголовок «Перо», старт развёрнутым)
+tool/build_windows_release.ps1 — полный цикл release-сборки Windows и обновление dist
+windows/runner/               — окно (заголовок «Перо», старт развёрнутым), иконка и метаданные
 ```
 
 ## Осознанно отложено

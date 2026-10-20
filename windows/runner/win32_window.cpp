@@ -31,6 +31,19 @@ static int g_active_window_count = 0;
 
 using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
 
+// Returns the DPI of the given window, falling back to 96 when the
+// GetDpiForWindow API is unavailable (Windows 10 1607+).
+UINT GetWindowDpi(HWND hwnd) {
+  using GetDpiForWindowFn = UINT(WINAPI*)(HWND);
+  static GetDpiForWindowFn get_dpi_for_window =
+      reinterpret_cast<GetDpiForWindowFn>(GetProcAddress(
+          GetModuleHandleW(L"user32.dll"), "GetDpiForWindow"));
+  if (get_dpi_for_window != nullptr) {
+    return get_dpi_for_window(hwnd);
+  }
+  return 96;
+}
+
 // Scale helper to convert logical scaler values to physical using passed in
 // scale factor
 int Scale(int source, double scale_factor) {
@@ -186,6 +199,14 @@ Win32Window::MessageHandler(HWND hwnd,
         PostQuitMessage(0);
       }
       return 0;
+
+    case WM_GETMINMAXINFO: {
+      auto* info = reinterpret_cast<MINMAXINFO*>(lparam);
+      const double scale_factor = GetWindowDpi(hwnd) / 96.0;
+      info->ptMinTrackSize.x = Scale(560, scale_factor);
+      info->ptMinTrackSize.y = Scale(420, scale_factor);
+      return 0;
+    }
 
     case WM_DPICHANGED: {
       auto newRectSize = reinterpret_cast<RECT*>(lparam);

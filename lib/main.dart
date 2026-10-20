@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +12,7 @@ import 'documents/document_repository.dart';
 import 'settings/settings.dart';
 import 'storage/database.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
@@ -19,6 +22,7 @@ Future<void> main() async {
     final repository = DocumentRepository(database);
     final library = DocumentLibrary(repository);
     library.load();
+    await _importStartupFile(library, args);
 
     runApp(
       MultiProvider(
@@ -32,6 +36,51 @@ Future<void> main() async {
   } catch (error, stackTrace) {
     runApp(_StartupErrorApp(error: error, stackTrace: stackTrace));
   }
+}
+
+const List<String> _markdownExtensions = <String>[
+  '.md',
+  '.markdown',
+  '.txt',
+];
+
+Future<void> _importStartupFile(
+  DocumentLibrary library,
+  List<String> args,
+) async {
+  for (final arg in args) {
+    if (arg.startsWith('-')) {
+      continue;
+    }
+    final lower = arg.toLowerCase();
+    if (!_markdownExtensions.any(lower.endsWith)) {
+      continue;
+    }
+    try {
+      final file = File(arg);
+      if (!await file.exists()) {
+        continue;
+      }
+      var text = utf8.decode(await file.readAsBytes(), allowMalformed: true);
+      if (text.startsWith('\uFEFF')) {
+        text = text.substring(1);
+      }
+      library.importMarkdown(
+        text,
+        filePath: arg,
+        fallbackTitle: _fileBaseName(arg),
+      );
+      return;
+    } catch (_) {
+      return;
+    }
+  }
+}
+
+String _fileBaseName(String path) {
+  final name = path.split(RegExp(r'[\\/]')).last;
+  final dot = name.lastIndexOf('.');
+  return dot > 0 ? name.substring(0, dot) : name;
 }
 
 class _StartupErrorApp extends StatelessWidget {
